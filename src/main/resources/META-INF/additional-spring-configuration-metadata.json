@@ -1,0 +1,8 @@
+{
+  "properties": [
+    {
+      "name": "spring.datasource.primary.initialize",
+      "type": "java.lang.String",
+      "description": "Description for spring.datasource.primary.initialize."
+  }
+] }
