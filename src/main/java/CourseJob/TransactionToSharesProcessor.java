@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 import org.springframework.batch.item.ItemProcessor;
 
-public class TransactionToSharesProcessor implements ItemProcessor<TransactionShareRateDTO, SharesDTO>
+class TransactionToSharesProcessor implements ItemProcessor<TransactionShareRateDTO, SharesDTO>
 {
 	@Override
 	public SharesDTO process(TransactionShareRateDTO tsrDTO) throws Exception

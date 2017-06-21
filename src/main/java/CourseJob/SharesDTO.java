@@ -2,7 +2,7 @@ package CourseJob;
 
 import java.math.BigDecimal;
 
-public class SharesDTO
+class SharesDTO
 {
 	private String accountNumber;
 

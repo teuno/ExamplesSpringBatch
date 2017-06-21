@@ -5,7 +5,7 @@ import java.sql.SQLException;
 
 import org.springframework.jdbc.core.RowMapper;
 
-public class TransactionShareRateMapper implements RowMapper<TransactionShareRateDTO>
+class TransactionShareRateMapper implements RowMapper<TransactionShareRateDTO>
 {
 	@Override
 	public TransactionShareRateDTO mapRow(ResultSet rs, int rowNum) throws SQLException

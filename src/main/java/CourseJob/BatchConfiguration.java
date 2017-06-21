@@ -1,34 +1,34 @@
 package CourseJob;
 
-import java.util.ArrayList;
-
 import javax.sql.DataSource;
 
 import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
-import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 
 @EnableBatchProcessing
 @SpringBootApplication
 public class BatchConfiguration
 {
-	@Autowired
-	JobRepository jobRepository;
-
 	@Qualifier("dataSource")
 	@Autowired
-	DataSource dataSource;
+	private DataSource dataSource;
 
 	@Autowired
 	private JobBuilderFactory jobBuilderFactory;
@@ -36,15 +36,25 @@ public class BatchConfiguration
 	@Autowired
 	private StepBuilderFactory stepBuilderFactory;
 
-	public static void main(String[] args)
+	public static void main(String[] args) throws Exception
 	{
-		SpringApplication.run(BatchConfiguration.class, args);
+		SpringApplication app = new SpringApplication(BatchConfiguration.class);
+		ConfigurableApplicationContext ctx = app.run(args);
+
+		JobLauncher jobLauncher = ctx.getBean(JobLauncher.class);
+		Job job = ctx.getBean("importUserJob", Job.class);
+		String[][] Data = new String[][] { { "20170606", "3" }, { "20170606", "1" } };
+		for (String[] item : Data)
+		{
+			JobParameters jobParameters = new JobParametersBuilder().addString("TradeDate", item[0])
+				.addString("FundID", item[1]).toJobParameters();
+			jobLauncher.run(job, jobParameters);
+		}
 	}
 
 	@Bean
 	Job importUserJob()
 	{
-
 		return jobBuilderFactory.get("importUserJob").incrementer(new RunIdIncrementer()).start(shareProcessorStep())
 			.next(orderlineUpdaterStep()).next(orderUpdaterStep()).build();
 
@@ -53,25 +63,19 @@ public class BatchConfiguration
 	@Bean
 	Step shareProcessorStep()
 	{
-
-		ArrayList<ArrayList<String>> bits = new ArrayList<>();
-		ArrayList<String> bats = new ArrayList<>();
-		bats.add("1");
-		bats.add("2017-05-25");
-		bits.add(bats);
-		bats.clear();
-		bats.add("2");
-		bats.add("2017-05-25");
-		bits.add(bats);
-
+		String OverRiddenDate = null;
+		String OverridenFundID = null;
 		return stepBuilderFactory.get("shareProcessorStep").<TransactionShareRateDTO, SharesDTO> chunk(100)
-			.reader(transactionShareRateReader()).processor(new TransactionToSharesProcessor()).writer(shareWriter())
+			.reader(transactionShareRateReader(OverRiddenDate, OverridenFundID))
+			.processor(new TransactionToSharesProcessor()).writer(shareWriter())
 			.build();
 	}
+
 
 	@Bean
 	Step orderlineUpdaterStep()
 	{
+
 		SingleSQLStatementTasklet orderlineTasklet = new SingleSQLStatementTasklet();
 		orderlineTasklet.setDataSource(dataSource);
 		orderlineTasklet.setSql("UPDATE orderline_\n" + "set fundation.orderline_.STATUS='Completed'\n"
@@ -92,15 +96,14 @@ public class BatchConfiguration
 	}
 
 	@Bean
-	JdbcCursorItemReader<TransactionShareRateDTO> transactionShareRateReader()
+	@StepScope
+	JdbcCursorItemReader<TransactionShareRateDTO> transactionShareRateReader(
+		@Value("#{jobParameters['TradeDate']}") String tradeDate, @Value("#{jobParameters['FundID']}") String fundID)
 	{
-
 		String QUERY_GET_TSRDATA = "select order_.AccountNumber, trx_.TradeDate, trx_.Sum_ as TransactionSum, trx_.FundID, rate_.ShareRate, trx_.ThrowsException TransactionException, rate_.ThrowsException as SharesException\n"
 			+ "from trx_\n" + "join orderline_ on trx_.OrderlineID = orderline_.ID\n"
-			+ "Join order_ on orderline_.OrderID = order_.ID\n" + "join rate_ on trx_.FundID = rate_.FundID\n"; // +
-		// "WHERE trx_.TradeDate='2017-05-24'\n" +
-		// "AND rate_.TradeDate='2017-05-24'\n";
-
+			+ "Join order_ on orderline_.OrderID = order_.ID\n" + "join rate_ on trx_.FundID = rate_.FundID\n"
+			+ "where trx_.TradeDate = " + tradeDate + " and rate_.fundID = " + fundID;
 		JdbcCursorItemReader<TransactionShareRateDTO> reader = new JdbcCursorItemReader<>();
 		reader.setDataSource(dataSource);
 		reader.setRowMapper(new TransactionShareRateMapper());

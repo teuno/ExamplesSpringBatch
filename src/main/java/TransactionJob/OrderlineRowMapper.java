@@ -1,9 +1,9 @@
 package TransactionJob;
 
-import org.springframework.jdbc.core.RowMapper;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
+
+import org.springframework.jdbc.core.RowMapper;
 
 class OrderlineRowMapper implements RowMapper<OrderlineDTO>
 {
@@ -11,8 +11,7 @@ class OrderlineRowMapper implements RowMapper<OrderlineDTO>
 	@Override
 	public OrderlineDTO mapRow(ResultSet rs, int rowNum) throws SQLException
 	{
-        System.out.println("TEuno" + rowNum);
-        // Testing purposes
+		// Testing purposes
 		if (rs.getBoolean("ThrowsException"))
 			throw new ExpectedException(rs.getInt("OrderlineID"), "Reader");
 
